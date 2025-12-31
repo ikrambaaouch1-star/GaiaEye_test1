@@ -1,0 +1,416 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Satellite Intelligence Platform</title>
+
+    <!-- Leaflet CSS -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+        integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="" />
+
+    <!-- Leaflet Draw CSS -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet.draw/1.0.4/leaflet.draw.css" />
+
+    <link rel="stylesheet" href="style.css">
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+</head>
+
+<body>
+
+    <div id="map"></div>
+
+    <!-- Sidebar (Right) -->
+    <div class="sidebar">
+        <div class="sidebar-item" data-cat="veg" title="Vegetation">🌱</div>
+        <div class="sidebar-item" data-cat="water" title="Water">💧</div>
+        <div class="sidebar-item" data-cat="climate" title="Climate">🌡️</div>
+        <div class="sidebar-item" data-cat="urban" title="Urban">🏙️</div>
+        <div class="sidebar-item" data-cat="terrain" title="Terrain">🧭</div>
+        <div class="sidebar-divider"></div>
+        <div class="sidebar-item" id="dashboard-toggle" title="Agricultural Dashboard">📊</div>
+        <div class="sidebar-item" id="ai-analytics-toggle" title="AI Analytics">🤖</div>
+        <div class="sidebar-item" id="raw-data-toggle" title="Données brutes & analytiques">🧾</div>
+    </div>
+
+    <!-- Sub-menus (Slide-out from Right) -->
+    <div class="sub-menu-container">
+        <!-- Vegetation -->
+        <div class="sub-menu" id="sub-veg">
+            <h3>🌱 Vegetation</h3>
+            <button class="indicator-btn" data-ind="NDVI">NDVI (Health)</button>
+            <button class="indicator-btn" data-ind="EVI">EVI (Enhanced)</button>
+            <button class="indicator-btn" data-ind="SAVI">SAVI (Soil Adj)</button>
+            <button class="indicator-btn" data-ind="LAI">LAI (Leaf Area)</button>
+        </div>
+        <!-- Water -->
+        <div class="sub-menu" id="sub-water">
+            <h3>💧 Water & Hydrology</h3>
+            <button class="indicator-btn" data-ind="NDWI">NDWI (Water)</button>
+            <button class="indicator-btn" data-ind="MNDWI">MNDWI (Urban)</button>
+            <button class="indicator-btn" data-ind="SAR">Flood / SAR (S1)</button>
+        </div>
+        <!-- Climate -->
+        <div class="sub-menu" id="sub-climate">
+            <h3>🌡️ Climate</h3>
+            <button class="indicator-btn" data-ind="LST">Temp (MODIS)</button>
+            <button class="indicator-btn" data-ind="RAIN">Rainfall (CHIRPS)</button>
+        </div>
+        <!-- Urban -->
+        <div class="sub-menu" id="sub-urban">
+            <h3>🏙️ Urban</h3>
+            <button class="indicator-btn" data-ind="NDBI">Built-up Index</button>
+        </div>
+        <!-- Terrain -->
+        <div class="sub-menu" id="sub-terrain">
+            <h3>🧭 Terrain</h3>
+            <button class="indicator-btn" data-ind="ELEVATION">Elevation (m)</button>
+            <button class="indicator-btn" data-ind="SLOPE">Slope (deg)</button>
+        </div>
+    </div>
+
+    <!-- Bottom Date Panel -->
+    <div class="bottom-panel">
+        <div class="brand">🛰️ SatelliteAI</div>
+        <div class="date-controls">
+            <button id="prev-month" class="nav-btn">&lt;</button>
+            <div class="timeline-container">
+                <span id="date-display">December 2025</span>
+                <input type="range" id="time-slider" min="0" max="60" value="60">
+            </div>
+            <button id="next-month" class="nav-btn">&gt;</button>
+        </div>
+        <!-- Status removed from valid HTML flow in previous edits? Re-adding cleanly inside bottom-panel -->
+        <div id="status-msg" class="status-text">Ready.</div>
+    </div>
+
+    <!-- Agricultural Dashboard Overlay -->
+    <div id="agri-dashboard" class="dashboard-overlay hidden">
+        <div class="dashboard-header">
+            <h2>🌾 Agricultural Dashboard</h2>
+            <button id="close-dashboard" class="close-btn">✕</button>
+        </div>
+
+        <div class="dashboard-content">
+            <!-- Input Section -->
+            <div class="dashboard-section">
+                <h3>📝 Configuration</h3>
+                <div class="input-row">
+                    <label>Crop Type:</label>
+                    <select id="crop-type">
+                        <option value="wheat">Wheat</option>
+                        <option value="corn">Corn</option>
+                        <option value="rice">Rice</option>
+                        <option value="soybean">Soybean</option>
+                    </select>
+                </div>
+                <div class="input-row">
+                    <label>Input Costs ($/ha):</label>
+                    <input type="number" id="input-costs" value="500" min="0" step="50">
+                </div>
+                <button id="calculate-dashboard" class="action-btn">Calculate Metrics</button>
+            </div>
+
+            <!-- Metrics Grid -->
+            <div class="metrics-grid">
+                <!-- Productivity Card -->
+                <div class="metric-card">
+                    <h4>📈 Productivity Index</h4>
+                    <div class="metric-value" id="productivity-ndvi">--</div>
+                    <div class="metric-label">Mean NDVI</div>
+                    <div class="metric-detail" id="productivity-status">--</div>
+                    <div class="metric-detail" id="productivity-yield">Expected: -- tons/ha</div>
+                </div>
+
+                <!-- Financial Card -->
+                <div class="metric-card">
+                    <h4>💰 Financial Analysis</h4>
+                    <div class="metric-value" id="financial-profit">$--</div>
+                    <div class="metric-label">Net Profit</div>
+                    <div class="metric-detail" id="financial-roi">ROI: --%</div>
+                    <div class="metric-detail" id="financial-revenue">Revenue: $--</div>
+                </div>
+
+                <!-- Weather Risk Card -->
+                <div class="metric-card">
+                    <h4>🌦️ Weather Risk</h4>
+                    <div class="metric-value" id="weather-risk">--</div>
+                    <div class="metric-label">Overall Risk</div>
+                    <div class="metric-detail" id="weather-temp">Temp: --°C</div>
+                    <div class="metric-detail" id="weather-rain">Rain: -- mm</div>
+                </div>
+
+                <!-- Pest Risk Card -->
+                <div class="metric-card">
+                    <h4>🐛 Pest Risk</h4>
+                    <div class="metric-value" id="pest-risk">--</div>
+                    <div class="metric-label">Risk Level</div>
+                    <div class="metric-detail" id="pest-recommendation">--</div>
+                </div>
+
+                <!-- Soil Health Card -->
+                <div class="metric-card">
+                    <h4>🌱 Soil Health</h4>
+                    <div class="metric-value" id="soil-health">--</div>
+                    <div class="metric-label">Health Status</div>
+                    <div class="metric-detail" id="soil-nitrogen">N: --</div>
+                    <div class="metric-detail" id="soil-moisture">Moisture: --</div>
+                </div>
+
+                <!-- Irrigation Card -->
+                <div class="metric-card">
+                    <h4>💧 Irrigation</h4>
+                    <div class="metric-value" id="irrigation-urgency">--</div>
+                    <div class="metric-label">Urgency</div>
+                    <div class="metric-detail" id="irrigation-frequency">--</div>
+                    <div class="metric-detail" id="irrigation-amount">-- mm/session</div>
+                </div>
+            </div>
+
+            <!-- Fertilization Recommendations -->
+            <div class="dashboard-section">
+                <h3>🧪 Fertilization Recommendations</h3>
+                <div class="fertilization-grid">
+                    <div class="fert-item">
+                        <span class="fert-label">Nitrogen (N):</span>
+                        <span class="fert-value" id="fert-n">-- kg/ha</span>
+                    </div>
+                    <div class="fert-item">
+                        <span class="fert-label">Phosphorus (P):</span>
+                        <span class="fert-value" id="fert-p">-- kg/ha</span>
+                    </div>
+                    <div class="fert-item">
+                        <span class="fert-label">Potassium (K):</span>
+                        <span class="fert-value" id="fert-k">-- kg/ha</span>
+                    </div>
+                    <div class="fert-item">
+                        <span class="fert-label">Priority:</span>
+                        <span class="fert-value" id="fert-priority">--</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Area Info -->
+            <div class="dashboard-section">
+                <h3>📏 Plot Information</h3>
+                <p>Area: <span id="plot-area">--</span> hectares</p>
+                <p>Crop: <span id="plot-crop">--</span></p>
+            </div>
+        </div>
+    </div>
+
+    <!-- AI Analytics Dashboard -->
+    <div id="ai-analytics-dashboard" class="ai-dashboard-overlay hidden">
+        <div class="ai-dashboard-header">
+            <h2>🤖 GaiaEye AI Analytics</h2>
+            <button id="close-ai-dashboard" class="close-btn">✕</button>
+        </div>
+
+        <div class="ai-dashboard-content">
+            <!-- Global Score Section -->
+            <div class="global-score-section">
+                <div class="global-score-card">
+                    <h3>Global Sustainability Score</h3>
+                    <div class="score-circle" id="global-score-circle">
+                        <span class="score-number" id="global-score-number">--</span>
+                        <span class="score-label">/100</span>
+                    </div>
+                    <div class="score-interpretation" id="global-score-interpretation">--</div>
+                </div>
+            </div>
+
+            <!-- Composite Scores Grid -->
+            <div class="scores-grid">
+                <div class="ai-score-card">
+                    <div class="score-icon">🌱</div>
+                    <h4>Vegetation Health</h4>
+                    <div class="score-bar-container">
+                        <div class="score-bar" id="veg-health-bar" style="width: 0%"></div>
+                    </div>
+                    <span class="score-value" id="veg-health-value">--</span>
+                </div>
+
+                <div class="ai-score-card">
+                    <div class="score-icon">💧</div>
+                    <h4>Water Stress</h4>
+                    <div class="score-bar-container">
+                        <div class="score-bar stress" id="water-stress-bar" style="width: 0%"></div>
+                    </div>
+                    <span class="score-value" id="water-stress-value">--</span>
+                </div>
+
+                <div class="ai-score-card">
+                    <div class="score-icon">📊</div>
+                    <h4>Productivity</h4>
+                    <div class="score-bar-container">
+                        <div class="score-bar" id="productivity-bar" style="width: 0%"></div>
+                    </div>
+                    <span class="score-value" id="productivity-value">--</span>
+                </div>
+
+                <div class="ai-score-card">
+                    <div class="score-icon">⚠️</div>
+                    <h4>Environmental Risk</h4>
+                    <div class="score-bar-container">
+                        <div class="score-bar risk" id="env-risk-bar" style="width: 0%"></div>
+                    </div>
+                    <span class="score-value" id="env-risk-value">--</span>
+                </div>
+            </div>
+
+            <!-- AI Insights Section -->
+            <div class="ai-insights-section">
+                <h3>🧠 AI Interpretation</h3>
+                <div class="insight-box" id="ai-insight-text">
+                    Analyzing satellite data...
+                </div>
+            </div>
+
+            <!-- Zones Analysis -->
+            <div class="zones-section" id="zones-section" style="display: none;">
+                <h3>🗺️ Zone Segmentation</h3>
+                <div class="zones-grid" id="zones-grid">
+                    <!-- Zones will be populated dynamically -->
+                </div>
+            </div>
+
+            <!-- Alerts Section -->
+            <div class="alerts-section" id="alerts-section" style="display: none;">
+                <h3>⚠️ Alerts</h3>
+                <div class="alerts-container" id="alerts-container">
+                    <!-- Alerts will be populated dynamically -->
+                </div>
+            </div>
+
+            <!-- Recommendations Section -->
+            <div class="recommendations-section">
+                <h3>💡 Recommendations</h3>
+                <ul class="recommendations-list" id="ai-recommendations-list">
+                    <li>Draw an area on the map and click "Analyze" to get AI-powered recommendations</li>
+                </ul>
+            </div>
+
+            <!-- Action Button -->
+            <div class="action-section">
+                <button id="run-ai-analysis" class="ai-action-btn">
+                    <span class="btn-icon">🚀</span>
+                    Run AI Analysis
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Raw Data & Analytics Dashboard -->
+    <div id="raw-data-dashboard" class="raw-dashboard-overlay hidden">
+        <div class="raw-dashboard-header">
+            <h2>🧾 Données Brutes & Analytiques</h2>
+            <div class="header-actions">
+                <button id="export-json" class="action-btn-small">JSON</button>
+                <button id="export-csv" class="action-btn-small">CSV</button>
+                <button id="close-raw-dashboard" class="close-btn">✕</button>
+            </div>
+        </div>
+
+        <div class="raw-dashboard-content">
+            <div class="raw-tabs-nav">
+                <button class="raw-tab-btn active" data-tab="opt">A. Optique</button>
+                <button class="raw-tab-btn" data-tab="rad">B. Radar & 3D</button>
+                <button class="raw-tab-btn" data-tab="hyp">C. Hyperspéc.</button>
+                <button class="raw-tab-btn" data-tab="cli">D. Climat</button>
+                <button class="raw-tab-btn" data-tab="top">E. Topo</button>
+                <button class="raw-tab-btn" data-tab="sol">F. Sol & Bio</button>
+                <button class="raw-tab-btn" data-tab="pla">G. Plante</button>
+                <button class="raw-tab-btn" data-tab="aud" id="btn-tab-audit"
+                    style="color: #4ade80; font-weight: bold;">H. Audit Terroir ✨</button>
+            </div>
+
+            <div class="raw-tab-content active" id="raw-opt">
+                <div class="data-group">
+                    <h3>Sentinel-2 (13 Bandes)</h3>
+                    <div id="table-s2-bands" class="data-table-container">Chargement...</div>
+                </div>
+                <div class="data-group">
+                    <h3>Indices Végétatifs</h3>
+                    <div id="table-s2-indices" class="data-table-container">Chargement...</div>
+                </div>
+            </div>
+
+            <div class="raw-tab-content" id="raw-rad">
+                <div class="data-group">
+                    <h3>Sentinel-1 SAR</h3>
+                    <div id="table-s1" class="data-table-container">Chargement...</div>
+                </div>
+                <div class="data-group">
+                    <h3>GEDI Lidar</h3>
+                    <div id="table-gedi" class="data-table-container">Chargement...</div>
+                </div>
+            </div>
+
+            <div class="raw-tab-content" id="raw-hyp">
+                <div class="data-group">
+                    <h3>PRISMA Hyperspectral (Bandes Brutes)</h3>
+                    <div id="table-prisma" class="data-table-container">Chargement...</div>
+                </div>
+            </div>
+
+            <div class="raw-tab-content" id="raw-cli">
+                <div class="data-group">
+                    <h3>MODIS & GPM IMERG</h3>
+                    <div id="table-climate" class="data-table-container">Chargement...</div>
+                </div>
+            </div>
+
+            <div class="raw-tab-content" id="raw-top">
+                <div class="data-group">
+                    <h3>Topographie (DEM)</h3>
+                    <div id="table-topo" class="data-table-container">Chargement...</div>
+                </div>
+            </div>
+
+            <div class="raw-tab-content" id="raw-sol">
+                <div class="data-group">
+                    <h3>Propriétés Physico-Chimiques & Biologie</h3>
+                    <div id="table-soil" class="data-table-container">Chargement...</div>
+                </div>
+            </div>
+
+            <div class="raw-tab-content" id="raw-pla">
+                <div class="data-group">
+                    <h3>Phénologie & Santé Plante</h3>
+                    <div id="table-plant" class="data-table-container">Chargement...</div>
+                </div>
+            </div>
+
+            <div class="raw-tab-content" id="raw-aud">
+                <div class="audit-grid">
+                    <div class="audit-card highlight">
+                        <h3>🏆 Matching Terroir d'Excellence</h3>
+                        <div id="terroir-match-result">Calcul en cours...</div>
+                    </div>
+                </div>
+                <div class="data-group">
+                    <h3>🔍 Rapport d'Audit Scientifique (IA Vision)</h3>
+                    <div id="terroir-audit-report" class="scientific-report-text">Chargement de l'analyse cognitive...
+                    </div>
+                </div>
+                <div class="data-group">
+                    <h3>🔻 Écarts Critiques Détectés</h3>
+                    <div id="terroir-gaps-list" class="gaps-container">Aucun écart majeur identifié.</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Leaflet JS -->
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+        integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+
+    <!-- Leaflet Draw JS -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet.draw/1.0.4/leaflet.draw.js"></script>
+
+    <script src="app.js"></script>
+</body>
+
+</html>
